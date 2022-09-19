@@ -93,19 +93,17 @@ for FILE in "$@"; do
     # SERVER_MESSAGE=$(printf "%s" "$EXIT_DATA" | cut -d '*' -f 1);
     COMMAND_BIN_EXIT_CODE=$(printf "%s" "$EXIT_DATA" | cut -d '*' -f 2)
     if [ "$COMMAND_BIN_EXIT_CODE" -eq 0 ]; then
-      [ "$DOMAIN_STATUS" = "not_updated" ] && {
-        sed -i '/^not_updated=/ s/'"$REGEX_DOMAIN "'//' "$DATA_FILE"
+      [ "$DOMAIN_STATUS" != "updated" ] && {
+        [ "$DOMAIN_STATUS" = "not_updated" ] && sed -i '/^not_updated=/ s/'"$REGEX_DOMAIN "'//' "$DATA_FILE"
         sed -i 's/^updated=/updated='"$DOMAIN "'/' "$DATA_FILE"
       }
-      [ -z "$DOMAIN_STATUS" ] && sed -i 's/^updated=/updated='"$DOMAIN "'/' "$DATA_FILE"
       printf "%s \033[92m%s\033[m updated\n" "$(show_date)" "$DOMAIN" >>"$LOG_FILE"
     else
       EXIT_CODE=$((EXIT_CODE + 1))
-      [ "$DOMAIN_STATUS" = "updated" ] && {
-        sed -i '/^updated=/ s/'"$REGEX_DOMAIN "'//' "$DATA_FILE"
+      [ "$DOMAIN_STATUS" != "not_updated" ] && {
+        [ "$DOMAIN_STATUS" = "updated" ] && sed -i '/^updated=/ s/'"$REGEX_DOMAIN "'//' "$DATA_FILE"
         sed -i 's/^not_updated=/not_updated='"$DOMAIN "'/' "$DATA_FILE"
       }
-      [ -z "$DOMAIN_STATUS" ] && sed -i 's/^not_updated=/not_updated='"$DOMAIN "'/' "$DATA_FILE"
       printf "%s [+%s] \033[91m%s\033[m not updated, code %s\n" "$(show_date)" "$EXIT_CODE" "$DOMAIN" "$COMMAND_BIN_EXIT_CODE" >>"$LOG_FILE"
     fi
   done
