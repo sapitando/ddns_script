@@ -12,14 +12,22 @@ LOG_FILE=~/.ddns/log
 
 # Generate "data" and "log" files if not found
 if [ ! -f "$LOG_FILE" ]; then
-  DIR_LOG_FILE=$(printf "%s" "$LOG_FILE" | sed -E 's;((.*)/|)[[:alnum:]]+;\2;')
+  DIR_LOG_FILE=$(printf "%s" "$LOG_FILE" | sed -E '/\/$/d; s/((.*)\/|)[[:alnum:]]+[^/]$/\2/')
   [ -n "$DIR_LOG_FILE" ] && [ ! -d "$DIR_LOG_FILE" ] && mkdir -p "$DIR_LOG_FILE"
   printf "\033[30;46m>DDNS script...\033[m\n" >"$LOG_FILE"
+  if [ ! -f "$LOG_FILE" ]; then
+    printf "\033[30;101mLog file not created...\033[m\n"
+    exit 1
+  fi
 fi
 if [ ! -f "$DATA_FILE" ]; then
-  DIR_DATA_FILE=$(printf "%s" "$DATA_FILE" | sed -E 's;((.*)/|)[[:alnum:]]+;\2;')
+  DIR_DATA_FILE=$(printf "%s" "$DATA_FILE" | sed -E '/\/$/d; s/((.*)\/|)[[:alnum:]]+[^/]$/\2/')
   [ -n "$DIR_DATA_FILE" ] && [ ! -d "$DIR_DATA_FILE" ] && mkdir -p "$DIR_DATA_FILE"
   printf "ipv6=\nupdated=\nnot_updated=\n" >"$DATA_FILE"
+  if [ ! -f "$DATA_FILE" ]; then
+    printf "\033[30;101mData file not created...\033[m\n"
+    exit 1
+  fi
 else
   # Get current ip for comparison and check if there were failed updades
   LAST_IPV6=$(grep -Pom 1 '(?<=^ipv6=).*' "$DATA_FILE")
