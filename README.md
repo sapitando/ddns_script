@@ -2,7 +2,7 @@
 
 A simple script to update on Dynv6 platform.
 
-A file with the zones and token must be created,
+A file with the zones and tokens must be created
 and passed as an argument to the script.
 
 Example:
