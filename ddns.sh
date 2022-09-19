@@ -1,4 +1,6 @@
 #!/bin/sh
+# DDNS script for DynV6
+# IPv6 only
 
 show_date() {
   date +"[%d.%m.%y %H:%M:%S]"
