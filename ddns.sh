@@ -6,7 +6,7 @@ show_date() {
   date +"[%d.%m.%y %H:%M:%S]"
 }
 
-# Setting files
+# Defining files path
 DATA_FILE=~/.ddns/data
 LOG_FILE=~/.ddns/log
 
@@ -67,7 +67,7 @@ done
   exit "$EXIT_CODE"
 }
 
-# Check if updates it's needed
+# Check if updates are needed
 if [ "$IPV6" = "$LAST_IPV6" ]; then
   IPV6_STATUS="unchanged"
   [ -z "$NOT_UPDATED" ] && exit 0
@@ -83,7 +83,7 @@ for FILE in "$@"; do
     DOMAIN=$(printf "%s" "$LINE" | cut -d '*' -f 1)
     REGEX_DOMAIN=$(printf "%s" "$DOMAIN" | sed 's|\.|\\.|')
     DOMAIN_STATUS=$(grep -Pom 1 '((not_|)updated)(?=.*'"$REGEX_DOMAIN"')' "$DATA_FILE")
-    # Skip update if it's not necessary
+    # Skip update if domain is already updated
     [ "$DOMAIN_STATUS" = "updated" ] && [ "$IPV6_STATUS" = "unchanged" ] && continue
     TOKEN=$(printf "%s" "$LINE" | cut -d '*' -f 2)
     EXIT_DATA=$(
