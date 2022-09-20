@@ -1,6 +1,5 @@
 #!/bin/sh
-# DDNS script for DynV6
-# IPv6 only
+# DDNS script for DynV6, IPv6 only
 
 show_date() {
   date +"[%d.%m.%y %H:%M:%S]"
@@ -10,65 +9,83 @@ show_date() {
 DATA_FILE=~/.ddns/data
 LOG_FILE=~/.ddns/log
 
-# Generate "data" and "log" files if not found
+# Checking DATA_FILE
 if [ ! -f "$DATA_FILE" ]; then
   DIR_DATA_FILE=$(printf "%s" "$DATA_FILE" | sed -E '/\/$/d; s/((.*)\/|)[[:alnum:]]+[^/]$/\2/')
-  [ -n "$DIR_DATA_FILE" ] && [ ! -d "$DIR_DATA_FILE" ] && mkdir -p "$DIR_DATA_FILE"
-  printf "ipv6=\nupdated=\nnot_updated=\n" >"$DATA_FILE"
+  [ -n "$DIR_DATA_FILE" ] && [ ! -d "$DIR_DATA_FILE" ] && mkdir -p "$DIR_DATA_FILE" >/dev/null 2>&1
+  printf "ipv6=\nlink=\nhash=\nupdated=\nnot_updated=\n" | tee "$DATA_FILE" >/dev/null 2>&1
   if [ ! -f "$DATA_FILE" ]; then
-    printf "\033[30;101mData file not created...\033[m\n"
+    printf "\033[30;107m %s > \"\033[91m%s\033[30;107m\" not found \033[m\n" "$(show_date)" "$DATA_FILE"
+    printf "\033[30;107m %s > \033[91mexiting \033[m\n" "$(show_date)"
     exit 1
   fi
-else
-  # Get current ip for comparison and check if there were failed updades
-  LAST_IPV6=$(grep -Pom 1 '(?<=^ipv6=).*' "$DATA_FILE")
-  NOT_UPDATED=$(grep -Pom 1 '(?<=^not_updated=).*' "$DATA_FILE")
 fi
+
+# Checking LOG_FILE
 if [ ! -f "$LOG_FILE" ]; then
   DIR_LOG_FILE=$(printf "%s" "$LOG_FILE" | sed -E '/\/$/d; s/((.*)\/|)[[:alnum:]]+[^/]$/\2/')
-  [ -n "$DIR_LOG_FILE" ] && [ ! -d "$DIR_LOG_FILE" ] && mkdir -p "$DIR_LOG_FILE"
-  printf "\033[30;46m>DDNS script...\033[m\n" >"$LOG_FILE"
+  [ -n "$DIR_LOG_FILE" ] && [ ! -d "$DIR_LOG_FILE" ] && mkdir -p "$DIR_LOG_FILE" >/dev/null 2>&1
+  printf "\033[30;46m>DDNS script...\033[m\n" | tee -a "$LOG_FILE" >/dev/null 2>&1
   if [ ! -f "$LOG_FILE" ]; then
-    printf "\033[30;101mLog file not created...\033[m\n"
+    printf "\033[30;107m %s > \"\033[91m%s\033[30;107m\" not found \033[m\n" "$(show_date)" "$LOG_FILE"
+    printf "\033[30;107m %s > \033[91mexiting \033[m\n" "$(show_date)"
     exit 1
   fi
 fi
 
-# Get current ipv6 if available
-IPV6=$(ip -6 addr show scope global | grep -Pom 1 '([0-9a-f]{0,4}[:/]){8}\d{2,3}')
-[ -z "$IPV6" ] && {
-  EXIT_CODE=$((EXIT_CODE + 1))
-  printf "%s [+%s] \033[91mipv6 address\033[m not found\n" "$(show_date)" "$EXIT_CODE" >>"$LOG_FILE"
-}
+# Checking script arguments
+if [ "$#" -eq 0 ]; then
+  printf "\033[30;107m%s > invalid argument, no argument passed \033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  printf "\033[30;107m%s > \033[91mexiting \033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  exit 1
+fi
 
-# Check if wget or curl binaries are available
-COMMAND_BIN=$({ command -v wget && printf " -qO -";} || { command -v curl && printf " -fsS";})
-[ -z "$COMMAND_BIN" ] && {
-  EXIT_CODE=$((EXIT_CODE + 1))
-  printf "%s [+%s] binaries \033[91mwget\033[m and \033[91mcurl\033[m not found\n" "$(show_date)" "$EXIT_CODE" >>"$LOG_FILE"
-}
-
-# Check if arguments are correct
-[ "$#" -eq 0 ] && {
-  EXIT_CODE=$((EXIT_CODE + 1))
-  printf "%s [+%s] no \033[91margument\033[m passed\n" "$(show_date)" "$EXIT_CODE" >>"$LOG_FILE"
-}
+# Checking for existence of argument files
 for FILE in "$@"; do
-  [ ! -f "$FILE" ] && {
-    EXIT_CODE=$((EXIT_CODE + 1))
-    printf "%s [+%s] file \033[91m%s\033[m not found\n" "$(show_date)" "$EXIT_CODE" "$FILE" >>"$LOG_FILE"
-  }
+  if [ ! -f "$FILE" ]; then
+    printf "\033[30;107m%s > invalid argument, \033[91m%s\033[30;107m not found \033[m\n" "$(show_date)" "$FILE" | tee -a "$LOG_FILE"
+    ARGUMENT_ERROR=$((ARGUMENT_ERROR + 1))
+  fi
 done
+if [ -n "$ARGUMENT_ERROR" ]; then
+  printf "\033[30;107m%s > \033[91mExiting \033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  exit 1
+fi
 
-# Exit if there are errors
-[ -n "$EXIT_CODE" ] && {
-  printf "%s \033[91m%s\033[m error(s) found\n" "$(show_date)" "$EXIT_CODE" >>"$LOG_FILE"
-  printf "\033[30;101mExiting script...\033[m\n" >>"$LOG_FILE"
-  exit "$EXIT_CODE"
-}
+# Checking for changes in argument files
+HASH_DATA=$(grep -Pom 1 '(?<=^hash=).*' "$DATA_FILE")
+HASH=$(cat "$@" | md5sum | cut -d ' ' -f 1)
+if [ "$HASH_DATA" != "$HASH" ]; then
+  sed -i 's/\(^hash=\).*/\1'"$HASH"'/' "$DATA_FILE"
+  UPDATED=$(grep -Pom 1 '(?<=^updated=).*' "$DATA_FILE")
+  sed -i 's/^updated=.*/updated=/' "$DATA_FILE"
+  sed -i 's/^not_updated=/not_updated='"$UPDATED"'/' "$DATA_FILE"
+fi
 
-# Check if updates are needed
-if [ "$IPV6" = "$LAST_IPV6" ]; then
+# Checking http client
+HTTP_BIN=$({ command -v wget && printf " -qO -"; } || { command -v curl && printf " -fsS"; })
+if [ -z "$HTTP_BIN" ]; then
+  printf "\033[30;107m%s > HTTP client(\033[91mwget curl\033[30;107m) not found \033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  printf "\033[30;107m%s > \033[91mExiting \033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  exit 1
+fi
+
+# Checking connection status
+IPV6=$(ip -6 addr show scope global | grep -Pom 1 '([0-9a-f]{0,4}[:/]){8}\d{2,3}')
+LINK_STATUS=$(grep -Pom 1 '(?<=^link=).*' "$DATA_FILE")
+if [ -z "$IPV6" ]; then
+  [ "$LINK_STATUS" = "off" ] && exit 1
+  sed -i 's/^link=.*/link=off/' "$DATA_FILE"
+  sed -i 's/^ipv6=.*/ipv6=/' "$DATA_FILE"
+  printf "%s \033[91mLink down\033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  exit 1
+fi
+[ "$LINK_STATUS" != "on" ] && sed -i 's/^link=.*/link=on/' "$DATA_FILE"
+
+# Checking update status
+IPV6_DATA=$(grep -Pom 1 '(?<=^ipv6=).*' "$DATA_FILE")
+NOT_UPDATED=$(grep -Pom 1 '(?<=^not_updated=).*' "$DATA_FILE")
+if [ "$IPV6" = "$IPV6_DATA" ]; then
   IPV6_STATUS="unchanged"
   [ -z "$NOT_UPDATED" ] && exit 0
 else
@@ -86,13 +103,10 @@ for FILE in "$@"; do
     # Skip update if domain is already updated
     [ "$DOMAIN_STATUS" = "updated" ] && [ "$IPV6_STATUS" = "unchanged" ] && continue
     TOKEN=$(printf "%s" "$LINE" | cut -d '*' -f 2)
-    EXIT_DATA=$(
-      $COMMAND_BIN 'https://ipv6.dynv6.com/api/update?zone='"${DOMAIN}"'&ipv6='"${IPV6}"'&token='"${TOKEN}"
-      printf "*%s" "$?"
-    )
-    # SERVER_MESSAGE=$(printf "%s" "$EXIT_DATA" | cut -d '*' -f 1);
-    COMMAND_BIN_EXIT_CODE=$(printf "%s" "$EXIT_DATA" | cut -d '*' -f 2)
-    if [ "$COMMAND_BIN_EXIT_CODE" -eq 0 ]; then
+    HTTP_BIN_OUTPUT=$($HTTP_BIN 'https://ipv6.dynv6.com/api/update?zone='"$DOMAIN"'&ipv6='"$IPV6"'&token='"$TOKEN"; printf "*%s" "$?")
+    # SERVER_MESSAGE=$(printf "%s" "$HTTP_BIN_OUTPUT" | cut -d '*' -f 1);
+    HTTP_BIN_EXIT_CODE=$(printf "%s" "$HTTP_BIN_OUTPUT" | cut -d '*' -f 2)
+    if [ "$HTTP_BIN_EXIT_CODE" -eq 0 ]; then
       [ "$DOMAIN_STATUS" != "updated" ] && {
         [ "$DOMAIN_STATUS" = "not_updated" ] && sed -i '/^not_updated=/ s/'"$REGEX_DOMAIN "'//' "$DATA_FILE"
         sed -i 's/^updated=/updated='"$DOMAIN "'/' "$DATA_FILE"
@@ -104,7 +118,13 @@ for FILE in "$@"; do
         [ "$DOMAIN_STATUS" = "updated" ] && sed -i '/^updated=/ s/'"$REGEX_DOMAIN "'//' "$DATA_FILE"
         sed -i 's/^not_updated=/not_updated='"$DOMAIN "'/' "$DATA_FILE"
       }
-      printf "%s [+%s] \033[91m%s\033[m not updated, code %s\n" "$(show_date)" "$EXIT_CODE" "$DOMAIN" "$COMMAND_BIN_EXIT_CODE" >>"$LOG_FILE"
+      printf "%s [+%s] \033[91m%s\033[m not updated, code %s\n" "$(show_date)" "$EXIT_CODE" "$DOMAIN" "$HTTP_BIN_EXIT_CODE" >>"$LOG_FILE"
     fi
   done
 done
+
+# Garbage collector
+NOT_UPDATED=$(grep -Pom 1 '(?<=^not_updated=).*' "$DATA_FILE")
+if [ -z "$EXIT_CODE" ] && [ -n "$NOT_UPDATED" ]; then
+  sed -i 's/^not_updated=.*/not_updated=/' "$DATA_FILE"
+fi
