@@ -11,11 +11,6 @@ LOG_FILE=~/.ddns/log
 
 # Checking DATA_FILE
 if [ ! -f "$DATA_FILE" ]; then
-  if [ "$(printf "%s ""$DATA_FILE" | tail -c 1)" = "/" ]; then
-    printf "\033[30;107m %s > \"\033[91m%s\033[30;107m\" invalid file \033[m\n" "$(show_date)" "$DATA_FILE"
-    printf "\033[30;107m %s > \033[91mexiting \033[m\n" "$(show_date)"
-    exit 1
-  fi
   DIR_DATA_FILE=$(printf "%s" "$DATA_FILE" | grep -Po '.*(?=/\w+[^/]$)')
   [ -n "$DIR_DATA_FILE" ] && [ ! -d "$DIR_DATA_FILE" ] && mkdir -p "$DIR_DATA_FILE" >/dev/null 2>&1
   printf "ipv6=\nlink=\nhash=\nupdated=\nnot_updated=\n" | tee "$DATA_FILE" >/dev/null 2>&1
@@ -28,11 +23,6 @@ fi
 
 # Checking LOG_FILE
 if [ ! -f "$LOG_FILE" ]; then
-  if [ "$(printf "%s" "$LOG_FILE" | tail -c 1)" = "/" ]; then
-    printf "\033[30;107m %s > \"\033[91m%s\033[30;107m\" invalid file \033[m\n" "$(show_date)" "$LOG_FILE"
-    printf "\033[30;107m %s > \033[91mexiting \033[m\n" "$(show_date)"
-    exit 1
-  fi
   DIR_LOG_FILE=$(printf "%s" "$LOG_FILE" | grep -Po '.*(?=/\w+[^/]$)')
   [ -n "$DIR_LOG_FILE" ] && [ ! -d "$DIR_LOG_FILE" ] && mkdir -p "$DIR_LOG_FILE" >/dev/null 2>&1
   printf "\033[30;46m>DDNS script...\033[m\n" | tee -a "$LOG_FILE" >/dev/null 2>&1
