@@ -77,7 +77,7 @@ if [ -z "$IPV6" ]; then
   [ "$LINK_STATUS" = "off" ] && exit 1
   sed -i 's/^link=.*/link=off/' "$DATA_FILE"
   sed -i 's/^ipv6=.*/ipv6=/' "$DATA_FILE"
-  printf "%s \033[91mLink down\033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
+  printf "%s \033[91mlink down\033[m\n" "$(show_date)" | tee -a "$LOG_FILE"
   exit 1
 fi
 [ "$LINK_STATUS" != "on" ] && sed -i 's/^link=.*/link=on/' "$DATA_FILE"
